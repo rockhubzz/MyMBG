@@ -29,7 +29,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add trigger to keuangan table
-CREATE TRIGGER IF NOT EXISTS trg_keuangan_created_at 
+DROP TRIGGER IF EXISTS trg_keuangan_created_at ON public.keuangan;
+CREATE TRIGGER trg_keuangan_created_at 
 BEFORE INSERT ON public.keuangan 
 FOR EACH ROW 
 EXECUTE FUNCTION public.fn_update_keuangan_timestamp();

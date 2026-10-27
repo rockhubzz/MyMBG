@@ -85,13 +85,17 @@ FOR EACH ROW
 EXECUTE FUNCTION public.fn_insert_distribusi_kode();
 
 -- Generate codes for existing records that don't have them
-UPDATE sesi_produksi
-SET kode_produksi = 'PR-' || LPAD(ROW_NUMBER() OVER (ORDER BY created_at)::TEXT, 3, '0')
-WHERE kode_produksi IS NULL;
+UPDATE sesi_produksi sp
+SET    kode_produksi = 'PR-' || LPAD(n.rn::text, 3, '0')
+FROM   (SELECT id, ROW_NUMBER() OVER (ORDER BY created_at) AS rn
+        FROM sesi_produksi WHERE kode_produksi IS NULL) n
+WHERE  sp.id = n.id;
 
-UPDATE distribusi
-SET kode_distribusi = 'DTB-' || LPAD(ROW_NUMBER() OVER (ORDER BY created_at)::TEXT, 3, '0')
-WHERE kode_distribusi IS NULL;
+UPDATE distribusi d
+SET    kode_distribusi = 'DTB-' || LPAD(n.rn::text, 3, '0')
+FROM   (SELECT id, ROW_NUMBER() OVER (ORDER BY created_at) AS rn
+        FROM distribusi WHERE kode_distribusi IS NULL) n
+WHERE  d.id = n.id;
 
 -- ============================================================================
 -- END OF SCRIPT

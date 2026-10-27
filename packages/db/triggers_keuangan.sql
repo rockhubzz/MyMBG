@@ -47,7 +47,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add trigger
-CREATE TRIGGER IF NOT EXISTS trg_sesi_produksi_create_keuangan 
+DROP TRIGGER IF EXISTS trg_sesi_produksi_create_keuangan ON public.sesi_produksi;
+CREATE TRIGGER trg_sesi_produksi_create_keuangan 
 AFTER UPDATE ON public.sesi_produksi 
 FOR EACH ROW 
 EXECUTE FUNCTION public.fn_create_keuangan_produksi();
@@ -92,7 +93,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add trigger for distribusi
-CREATE TRIGGER IF NOT EXISTS trg_distribusi_create_keuangan 
+DROP TRIGGER IF EXISTS trg_distribusi_create_keuangan ON public.distribusi;
+CREATE TRIGGER trg_distribusi_create_keuangan 
 AFTER INSERT ON public.distribusi 
 FOR EACH ROW 
 EXECUTE FUNCTION public.fn_create_keuangan_distribusi();
@@ -105,7 +107,8 @@ BEGIN
     IF (OLD.biaya_distribusi IS NULL OR OLD.biaya_distribusi = 0) 
        AND NEW.biaya_distribusi > 0 THEN
         -- Delete existing keuangan entry for this distribusi if any
-        DELETE FROM keuangan WHERE distribusi_id = NEW.id LIMIT 1;
+        DELETE FROM keuangan
+        WHERE ctid IN (SELECT ctid FROM keuangan WHERE distribusi_id = NEW.id LIMIT 1);
         
         -- Create new keuangan entry with updated biaya
         DECLARE
@@ -142,7 +145,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER IF NOT EXISTS trg_distribusi_update_keuangan 
+DROP TRIGGER IF EXISTS trg_distribusi_update_keuangan ON public.distribusi;
+CREATE TRIGGER trg_distribusi_update_keuangan 
 AFTER UPDATE ON public.distribusi 
 FOR EACH ROW 
 EXECUTE FUNCTION public.fn_update_keuangan_distribusi();

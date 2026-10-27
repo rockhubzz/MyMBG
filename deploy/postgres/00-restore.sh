@@ -12,6 +12,25 @@ psql \
   --set=ON_ERROR_STOP=1 \
   --file /seed/mymbg.sql
 
+# Patch chain, applied in dependency order (all idempotent):
+#   1. keuangan_schema.sql         finance table + timestamp trigger
+#   2. triggers_keuangan.sql       auto-create keuangan rows on produksi/distribusi
+#   3. fix_keuangan_triggers.sql   corrected produksi trigger
+#   4. add_kode_fields.sql         kode_produksi / kode_distribusi sequences
+for patch in \
+  keuangan_schema.sql \
+  triggers_keuangan.sql \
+  fix_keuangan_triggers.sql \
+  add_kode_fields.sql
+do
+  echo "Applying patch: /seed/$patch"
+  psql \
+    --username "${POSTGRES_USER}" \
+    --dbname "${POSTGRES_DB}" \
+    --set=ON_ERROR_STOP=1 \
+    --file "/seed/$patch"
+done
+
 psql \
   --username "${POSTGRES_USER}" \
   --dbname "${POSTGRES_DB}" \
