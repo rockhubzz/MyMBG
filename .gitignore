@@ -1,0 +1,26 @@
+# Environment / secrets
+.env
+.env.*
+packages/db/sql creds.txt
+*creds*.txt
+*.pem
+*.key
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+npm-debug.log*
+
+# .NET
+**/bin/
+**/obj/
+**/publish/
+**/.vs/
+**/*.user
+**/*.suo
+**/bin_verify/
+
+# Editor / OS
+.DS_Store
+*.swp

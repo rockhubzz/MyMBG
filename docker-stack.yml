@@ -1,0 +1,93 @@
+services:
+  db:
+    image: ${POSTGRES_IMAGE:-mymbg-postgres:local}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mymbg_db}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:-mymbg}
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - mymbg
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 0
+        window: 120s
+
+  backend:
+    image: ${BACKEND_IMAGE:-mymbg-backend:local}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5292
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-mymbg_db}
+      POSTGRES_USER: ${POSTGRES_APP_USER:-mymbg}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    networks:
+      - mymbg
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:5292/db/ping || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 0
+        window: 120s
+
+  web:
+    image: ${WEB_IMAGE:-mymbg-web:local}
+    environment:
+      NODE_ENV: production
+    ports:
+      - target: 3000
+        published: ${WEB_PORT:-3000}
+        protocol: tcp
+        mode: ingress
+    networks:
+      - mymbg
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --output-document=/dev/null http://127.0.0.1:3000/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 0
+        window: 120s
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  mymbg:
+    driver: overlay
+    attachable: true
+
+secrets:
+  postgres_password:
+    external: true
+    name: ${POSTGRES_PASSWORD_SECRET:-mymbg_postgres_password}

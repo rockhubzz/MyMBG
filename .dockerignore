@@ -1,0 +1,15 @@
+# Keep Docker build contexts small. Repo-root context is used by
+# deploy/postgres.Dockerfile; app-specific contexts have their own
+# ignore files in apps/web and apps/backend.
+.git/
+.env
+.env.*
+**/node_modules/
+**/.next/
+**/out/
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+**/*.suo
+*.log
