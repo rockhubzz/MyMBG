@@ -44,6 +44,10 @@ function isEditableResepField(col: ColumnDefinition): boolean {
   if (lower === 'is_active' || lower === 'created_by') {
     return false;
   }
+  // Human-readable codes and system-managed fields are not user inputs.
+  if (lower.startsWith('kode_')) {
+    return false;
+  }
   return !col.isPrimaryKey && lower !== 'created_at' && lower !== 'updated_at';
 }
 

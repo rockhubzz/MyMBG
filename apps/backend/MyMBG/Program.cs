@@ -127,6 +127,7 @@ app.MapAuthEndpoints();
 app.MapCrudEndpoints();
 app.MapProduksiEndpoints();
 app.MapDistribusiEndpoints();
+app.MapMonitoringEndpoints();
 
 using (var scope = app.Services.CreateScope())
 {

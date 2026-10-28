@@ -8,6 +8,7 @@ import { GiCookingPot } from 'react-icons/gi';
 import { TbTruckDelivery } from 'react-icons/tb';
 import { IoStatsChart } from 'react-icons/io5';
 import { FaMoneyBillWave } from 'react-icons/fa';
+import { MdOutlineMonitorHeart } from 'react-icons/md';
 
 interface SidebarProps {
   user: AuthUser;
@@ -18,6 +19,7 @@ export function Sidebar({ user }: SidebarProps) {
 
   const navItems = [
     { label: 'Dashboard', href: '/dashboard', icon: <span className="text-3xl text-green-500"><IoStatsChart /></span> },
+    { label: 'Monitor', href: '/monitor', icon: <span className="text-3xl text-green-500"><MdOutlineMonitorHeart /></span> },
     { label: 'Users', href: '/users', icon: <span className="text-3xl text-green-500"><FaUserCircle /></span> },
     { label: 'Bahan Baku', href: '/bahan-baku', icon: <span className="text-3xl text-green-500"><FaBoxesPacking /></span> },
     { label: 'Resep', href: '/resep', icon: <span className="text-3xl text-green-500"><GiKnifeFork /></span> },
@@ -27,9 +29,9 @@ export function Sidebar({ user }: SidebarProps) {
   ];
 
   const ROLE_ROUTES: Record<string, string[]> = {
-    Admin: ['/dashboard', '/users', '/bahan-baku', '/resep', '/produksi', '/distribusi', '/keuangan'],
-    KepalaDapur: ['/dashboard', '/bahan-baku', '/resep', '/produksi', '/distribusi', '/keuangan'],
-    Staff: ['/dashboard', '/bahan-baku', '/produksi', '/distribusi', '/keuangan'],
+    Admin: ['/dashboard', '/monitor', '/users', '/bahan-baku', '/resep', '/produksi', '/distribusi', '/keuangan'],
+    KepalaDapur: ['/dashboard', '/monitor', '/bahan-baku', '/resep', '/produksi', '/distribusi', '/keuangan'],
+    Staff: ['/dashboard', '/monitor', '/bahan-baku', '/produksi', '/distribusi', '/keuangan'],
   };
 
   const allowedRoutes = ROLE_ROUTES[user.role] ?? ['/dashboard'];
