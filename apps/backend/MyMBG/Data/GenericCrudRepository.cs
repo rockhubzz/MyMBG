@@ -105,6 +105,19 @@ public sealed class GenericCrudRepository
             throw new InvalidOperationException("Tidak ada field yang bisa disimpan.");
         }
 
+        // Pre-flight: required columns (NOT NULL without a DEFAULT) must be present
+        // and non-blank, otherwise the insert would end as an opaque 500.
+        var missing = allowedColumns
+            .Where(c => !c.IsNullable && !c.HasDefaultValue)
+            .Where(c => !payloadMap.TryGetValue(c.Name, out var v) || IsBlank(v))
+            .Select(c => c.Name)
+            .ToList();
+        if (missing.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Field wajib belum diisi atau kosong: {string.Join(", ", missing)}.");
+        }
+
         await using var connection = await _dataSource.OpenConnectionAsync();
         var columnSql = string.Join(", ", writable.Select(c => Quote(c.Name)));
         var valueSql = string.Join(", ", writable.Select(c => $"@{c.Name}"));
@@ -236,6 +249,19 @@ public sealed class GenericCrudRepository
         }
 
         return map;
+    }
+
+    private static bool IsBlank(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Null)
+        {
+            return true;
+        }
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            return string.IsNullOrWhiteSpace(value.GetString());
+        }
+        return false;
     }
 
     private static object ConvertInputValue(object? rawValue, ColumnDefinition column)

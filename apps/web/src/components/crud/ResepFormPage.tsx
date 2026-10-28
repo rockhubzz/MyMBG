@@ -52,6 +52,14 @@ export default function ResepFormPage({ isEditing = false, id }: Props) {
   const { user } = useAuthStore();
   const [meta, setMeta] = useState<EntityDefinition | null>(null);
   const [form, setForm] = useState<FormState>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const updateField = (name: string, value: string) => {
+    setForm((s) => ({ ...s, [name]: value }));
+    if (value.trim() && fieldErrors[name]) {
+      setFieldErrors((s) => ({ ...s, [name]: '' }));
+    }
+  };
   const [bahanBakuList, setBahanBakuList] = useState<Record<string, unknown>[]>([]);
   const [bahanBakuEntries, setBahanBakuEntries] = useState<BahanBakuEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -137,6 +145,25 @@ export default function ResepFormPage({ isEditing = false, id }: Props) {
     setError(null);
 
     try {
+      // Client-side required-field validation — show inline warnings
+      // instead of a raw 500 from the backend.
+      const fieldErrs: Record<string, string> = {};
+      const missingRequired: string[] = [];
+      editableColumns.forEach((col) => {
+        const v = (form[col.name] ?? '').trim();
+        const required =
+          !col.isNullable && !col.hasDefaultValue && col.name.toLowerCase() !== 'created_by';
+        if (required && v.length === 0) {
+          fieldErrs[col.name] = 'Wajib diisi';
+          missingRequired.push(humanizeLabel(col.name));
+        }
+      });
+      if (missingRequired.length > 0) {
+        setFieldErrors(fieldErrs);
+        throw new Error(`Lengkapi field wajib: ${missingRequired.join(', ')}`);
+      }
+      setFieldErrors({});
+
       const payload: Record<string, unknown> = {};
       editableColumns.forEach((col) => {
         const v = (form[col.name] ?? '').trim();
@@ -268,11 +295,14 @@ export default function ResepFormPage({ isEditing = false, id }: Props) {
                 <input
                   type="text"
                   value={form[col.name] ?? ''}
-                  onChange={(e) => setForm((s) => ({ ...s, [col.name]: e.target.value }))}
+                  onChange={(e) => updateField(col.name, e.target.value)}
                   placeholder={`Masukkan ${col.name.toLowerCase()}`}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className={`w-full px-4 py-2 rounded-lg border ${fieldErrors[col.name] ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'} bg-white text-black text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500`}
                 />
                 <p className="text-xs text-gray-500 mt-1">{getFieldHint(col.name)}</p>
+                {fieldErrors[col.name] && (
+                  <p className="text-xs text-red-600 mt-1 font-medium">⚠ {fieldErrors[col.name]}</p>
+                )}
               </div>
             ))}
           </div>
@@ -310,7 +340,7 @@ export default function ResepFormPage({ isEditing = false, id }: Props) {
                           <select
                             value={entry.bahan_baku_id}
                             onChange={(e) => handleBahanBakuChange(idx, 'bahan_baku_id', e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                            className={`w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500`}
                           >
                             <option value="">Pilih Bahan Baku</option>
                             {bahanBakuList.map((bahan) => (
@@ -326,7 +356,7 @@ export default function ResepFormPage({ isEditing = false, id }: Props) {
                             value={entry.jumlah}
                             onChange={(e) => handleBahanBakuChange(idx, 'jumlah', e.target.value)}
                             placeholder="Jumlah"
-                            className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                            className={`w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500`}
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -335,7 +365,7 @@ export default function ResepFormPage({ isEditing = false, id }: Props) {
                             value={entry.catatan}
                             onChange={(e) => handleBahanBakuChange(idx, 'catatan', e.target.value)}
                             placeholder="Catatan (opsional)"
-                            className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                            className={`w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500`}
                           />
                         </td>
                         <td className="px-4 py-3">

@@ -2,11 +2,25 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using MyMBG.Data;
 using MyMBG.Models;
+using Npgsql;
 
 namespace MyMBG.Endpoints;
 
 public static class CrudEndpoints
 {
+    /// <summary>
+    /// Translate Postgres rejections (not-null, FK, duplicate, bad UUID ...)
+    /// into a 400 with a readable message instead of an opaque 500.
+    /// </summary>
+    private static string FriendlyDatabaseError(PostgresException ex) => ex.SqlState switch
+    {
+        "23502" => $"Kolom '{ex.ColumnName ?? "database"}' wajib diisi.",
+        "23503" => "Referensi/relasi tidak valid — pastikan data terkait sudah ada.",
+        "23505" => "Data dengan nilai unik tersebut sudah ada.",
+        "22P02" => "Format salah — periksa nilai UUID/angka/kategori.",
+        _ => $"Database menolak data ({ex.SqlState})."
+    };
+
     public static RouteGroupBuilder MapCrudEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/crud");
@@ -97,6 +111,10 @@ public static class CrudEndpoints
             {
                 return Results.BadRequest(new { message = ex.Message });
             }
+            catch (PostgresException ex)
+            {
+                return Results.BadRequest(new { message = FriendlyDatabaseError(ex) });
+            }
             catch (Exception ex)
             {
                 return Results.Json(
@@ -121,6 +139,10 @@ public static class CrudEndpoints
             catch (InvalidOperationException ex)
             {
                 return Results.BadRequest(new { message = ex.Message });
+            }
+            catch (PostgresException ex)
+            {
+                return Results.BadRequest(new { message = FriendlyDatabaseError(ex) });
             }
             catch (Exception ex)
             {

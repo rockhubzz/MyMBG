@@ -140,6 +140,14 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
   const [resepOptions, setResepOptions] = useState<{ id: string; namaMenu: string }[]>([]);
   const [produksiOptions, setProduksiOptions] = useState<{ id: string; label: string }[]>([]);
   const [kurangiStokSekarang, setKurangiStokSekarang] = useState(true);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const updateField = (name: string, value: string) => {
+    setForm((s) => ({ ...s, [name]: value }));
+    if (value.trim() && fieldErrors[name]) {
+      setFieldErrors((s) => ({ ...s, [name]: '' }));
+    }
+  };
 
   const editableColumns = useMemo(
     () => (meta?.columns ?? []).filter(isEditable),
@@ -221,6 +229,25 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
     setError(null);
 
     try {
+      // Client-side required-field validation — show inline warnings
+      // instead of a raw 500 from the backend.
+      const fieldErrs: Record<string, string> = {};
+      const missingRequired: string[] = [];
+      editableColumns.forEach((col) => {
+        const v = (form[col.name] ?? '').trim();
+        const required =
+          !col.isNullable && !col.hasDefaultValue && col.name.toLowerCase() !== 'created_by';
+        if (required && v.length === 0) {
+          fieldErrs[col.name] = 'Wajib diisi';
+          missingRequired.push(humanizeLabel(col.name));
+        }
+      });
+      if (missingRequired.length > 0) {
+        setFieldErrors(fieldErrs);
+        throw new Error(`Lengkapi field wajib: ${missingRequired.join(', ')}`);
+      }
+      setFieldErrors({});
+
       const payload: Record<string, unknown> = {};
       editableColumns.forEach((col) => {
         const v = (form[col.name] ?? '').trim();
@@ -372,8 +399,8 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
                 {entity === 'users' && col.name === 'role' ? (
                   <select
                     value={form[col.name] ?? ''}
-                    onChange={(e) => setForm((s) => ({ ...s, [col.name]: e.target.value }))}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    onChange={(e) => updateField(col.name, e.target.value)}
+                    className={`w-full px-4 py-2 rounded-lg border ${fieldErrors[col.name] ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'} bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500`}
                   >
                     <option value="">Pilih Role</option>
                     <option value="Admin">Admin</option>
@@ -383,8 +410,8 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
                 ) : entity === 'produksi' && col.name === 'resep_id' ? (
                   <select
                     value={form[col.name] ?? ''}
-                    onChange={(e) => setForm((s) => ({ ...s, [col.name]: e.target.value }))}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    onChange={(e) => updateField(col.name, e.target.value)}
+                    className={`w-full px-4 py-2 rounded-lg border ${fieldErrors[col.name] ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'} bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500`}
                   >
                     <option value="">Pilih resep</option>
                     {resepOptions.map((r) => (
@@ -396,8 +423,8 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
                 ) : entity === 'produksi' && col.name === 'status' ? (
                   <select
                     value={form[col.name] ?? ''}
-                    onChange={(e) => setForm((s) => ({ ...s, [col.name]: e.target.value }))}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    onChange={(e) => updateField(col.name, e.target.value)}
+                    className={`w-full px-4 py-2 rounded-lg border ${fieldErrors[col.name] ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'} bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500`}
                   >
                     <option value="">Pilih status</option>
                     {PRODUKSI_STATUS.map((st) => (
@@ -409,8 +436,8 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
                 ) : entity === 'distribusi' && col.name === 'sesi_produksi_id' ? (
                   <select
                     value={form[col.name] ?? ''}
-                    onChange={(e) => setForm((s) => ({ ...s, [col.name]: e.target.value }))}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    onChange={(e) => updateField(col.name, e.target.value)}
+                    className={`w-full px-4 py-2 rounded-lg border ${fieldErrors[col.name] ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'} bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500`}
                   >
                     <option value="">Pilih sesi produksi</option>
                     {produksiOptions.map((p) => (
@@ -422,8 +449,8 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
                 ) : entity === 'bahan-baku' && col.name === 'kategori' ? (
                   <select
                     value={form[col.name] ?? ''}
-                    onChange={(e) => setForm((s) => ({ ...s, [col.name]: e.target.value }))}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    onChange={(e) => updateField(col.name, e.target.value)}
+                    className={`w-full px-4 py-2 rounded-lg border ${fieldErrors[col.name] ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'} bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500`}
                   >
                     <option value="">Pilih Kategori</option>
                     {KATEGORI_OPTIONS.map((kat) => (
@@ -438,9 +465,9 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
                       type="number"
                       min="0"
                       value={form[col.name] ?? ''}
-                      onChange={(e) => setForm((s) => ({ ...s, [col.name]: e.target.value }))}
+                      onChange={(e) => updateField(col.name, e.target.value)}
                       placeholder="Masukkan jumlah menit"
-                      className="flex-1 px-4 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className={`flex-1 px-4 py-2 rounded-lg border ${fieldErrors[col.name] ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'} bg-white text-black text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500`}
                     />
                     <span className="ml-3 text-sm text-gray-400">menit</span>
                   </div>
@@ -448,21 +475,24 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
                   <input
                     type="date"
                     value={form[col.name] ?? ''}
-                    onChange={(e) => setForm((s) => ({ ...s, [col.name]: e.target.value }))}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    onChange={(e) => updateField(col.name, e.target.value)}
+                    className={`w-full px-4 py-2 rounded-lg border ${fieldErrors[col.name] ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'} bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500`}
                   />
                 ) : (
                   <input
                     type="text"
                     value={form[col.name] ?? ''}
-                    onChange={(e) => setForm((s) => ({ ...s, [col.name]: e.target.value }))}
+                    onChange={(e) => updateField(col.name, e.target.value)}
                     placeholder={`Masukkan ${col.name.toLowerCase()}`}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className={`w-full px-4 py-2 rounded-lg border ${fieldErrors[col.name] ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'} bg-white text-black text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500`}
                   />
                 )}
                 <p className="text-xs text-gray-500 mt-1">
                   {getFieldHint(col.name, col.dataType, col.isNullable)}
                 </p>
+                {fieldErrors[col.name] && (
+                  <p className="text-xs text-red-600 mt-1 font-medium">⚠ {fieldErrors[col.name]}</p>
+                )}
               </div>
             ))}
           </div>
