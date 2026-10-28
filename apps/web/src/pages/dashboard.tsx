@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { crudApi } from '@/lib/api/crud';
 import { StatCard } from '@/components/StatCard';
 import { Layout } from '@/components/Layout';
+import { DetailModal } from '@/components/crud/DetailModal';
 import { FaBoxesPacking } from 'react-icons/fa6';
 import { GiKnifeFork } from 'react-icons/gi';
 import { GiCookingPot } from 'react-icons/gi';
@@ -26,6 +27,7 @@ export default function DashboardPage() {
     produksiBerlangsung: 0,
   });
   const [latestMenus, setLatestMenus] = useState<Record<string, unknown>[]>([]);
+  const [detailRow, setDetailRow] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -186,7 +188,12 @@ export default function DashboardPage() {
             ) : (
               <ul className="divide-y divide-gray-100">
                 {latestMenus.map((row: any, idx) => (
-                  <li key={String((row.id as string) ?? idx)} className="py-2 flex items-center justify-between">
+                  <li
+                    key={String((row.id as string) ?? idx)}
+                    className="py-2 flex items-center justify-between cursor-pointer hover:bg-gray-50 rounded-md px-2 -mx-2 transition"
+                    onClick={() => setDetailRow(row)}
+                    title="Klik untuk melihat detail"
+                  >
                     <div>
                       <p className="text-sm font-semibold text-gray-800">
                         {String(row.nama_menu ?? row.nama ?? 'Tanpa nama')}
@@ -207,6 +214,14 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Detail card popup — opens when a "Menu Terbaru" entry is clicked */}
+      <DetailModal
+        entity="resep"
+        row={detailRow}
+        onClose={() => setDetailRow(null)}
+        title={detailRow ? String(detailRow.nama_menu ?? '') : undefined}
+      />
     </Layout>
   );
 }

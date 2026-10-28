@@ -6,6 +6,7 @@ import { EntityDefinition, ColumnDefinition, PagedResult } from '@/types/crud';
 import { Layout } from '@/components/Layout';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth-store';
+import { DetailModal } from '@/components/crud/DetailModal';
 
 interface KeuanganDisplayItem {
   id: string;
@@ -23,6 +24,7 @@ export default function KeuanganPage() {
   const { user } = useAuthStore();
   const pageSize = 20;
   const entity = 'keuangan';
+  const [detailRow, setDetailRow] = useState<KeuanganDisplayItem | null>(null);
 
   // Foreign key references cache
   const [fkCache, setFkCache] = useState<Record<string, Record<string, string>>>({});
@@ -229,7 +231,11 @@ export default function KeuanganPage() {
                 </thead>
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
+                    <tr
+                      key={item.id}
+                      className="border-b border-gray-200 hover:bg-gray-50 transition cursor-pointer"
+                      onClick={() => setDetailRow(item)}
+                    >
                       {displayColumns.map((col) => (
                         <td key={`${item.id}-${col}`} className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
                           {getDisplayColumnValue(item, col)}
@@ -271,11 +277,21 @@ export default function KeuanganPage() {
             <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-800">
                 <strong>Catatan:</strong> Halaman ini hanya untuk melihat log pengeluaran. Semua entri dibuat otomatis dari sistem produksi dan distribusi.
-                Data tidak dapat diedit atau dihapus secara manual.
+                Data tidak dapat diedit atau dihapus secara manual. Klik baris untuk melihat detail.
               </p>
             </div>
           </>
         )}
+
+        {/* Detail card popup — opens when a data entry row is clicked */}
+        <DetailModal
+          entity={entity}
+          row={detailRow}
+          onClose={() => setDetailRow(null)}
+          formatValue={(row, col) => getDisplayColumnValue(row as KeuanganDisplayItem, col.name)}
+          hideEdit
+          hideDetailLink
+        />
       </div>
     </Layout>
   );

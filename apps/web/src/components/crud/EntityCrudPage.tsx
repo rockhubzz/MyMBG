@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { crudApi } from '@/lib/api/crud';
 import { EntityDefinition, ColumnDefinition } from '@/types/crud';
 import { Layout } from '@/components/Layout';
+import { DetailModal } from '@/components/crud/DetailModal';
 
 interface Props {
   entity: string;
@@ -52,6 +53,7 @@ export default function EntityCrudPage({ entity, title, displayColumns, columnAl
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [fkMaps, setFkMaps] = useState<FkLabelMaps>(emptyFkMaps);
+  const [detailRow, setDetailRow] = useState<Record<string, unknown> | null>(null);
 
   const formatRupiah = (value: unknown): string => {
     if (value === null || value === undefined) return '-';
@@ -232,7 +234,7 @@ export default function EntityCrudPage({ entity, title, displayColumns, columnAl
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-1">Daftar Data</h2>
-            <p className="text-sm text-gray-600">Total: <span className="font-semibold">{rows.length}</span> data</p>
+            <p className="text-sm text-gray-600">Total: <span className="font-semibold">{rows.length}</span> data · klik baris untuk melihat detail</p>
           </div>
           <Link
             href={`/${entity}/create`}
@@ -295,7 +297,11 @@ export default function EntityCrudPage({ entity, title, displayColumns, columnAl
                   </tr>
                 ) : (
                   rows.map((row, idx) => (
-                    <tr key={`${idx}-${String(row[meta?.primaryKey ?? 'id'] ?? '')}`} className="hover:bg-gray-50">
+                    <tr
+                      key={`${idx}-${String(row[meta?.primaryKey ?? 'id'] ?? '')}`}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => setDetailRow(row)}
+                    >
                       {columnsToDisplay.map((c) => (
                         <td key={c.name} className="px-6 py-4 text-gray-700 whitespace-nowrap min-w-max">
                           <div className="truncate max-w-xs">{formatCellValue(row, c)}</div>
@@ -305,12 +311,16 @@ export default function EntityCrudPage({ entity, title, displayColumns, columnAl
                         <div className="flex gap-2">
                           <Link
                             href={`/${entity}/${String(row[meta?.primaryKey ?? 'id'] ?? '')}`}
+                            onClick={(e) => e.stopPropagation()}
                             className="px-3 py-1.5 rounded-lg border border-blue-300 bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 transition"
                           >
                             ✎ Edit
                           </Link>
                           <button
-                            onClick={() => void remove(row)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void remove(row);
+                            }}
                             className="px-3 py-1.5 rounded-lg border border-red-300 bg-red-50 text-red-700 text-xs font-medium hover:bg-red-100 transition"
                           >
                             🗑 Hapus
@@ -325,6 +335,15 @@ export default function EntityCrudPage({ entity, title, displayColumns, columnAl
           </div>
         </div>
       </div>
+
+      {/* Detail card popup — opens when a data entry row is clicked */}
+      <DetailModal
+        entity={entity}
+        row={detailRow}
+        onClose={() => setDetailRow(null)}
+        columnAliases={columnAliases}
+        formatValue={formatCellValue}
+      />
     </Layout>
   );
 }
