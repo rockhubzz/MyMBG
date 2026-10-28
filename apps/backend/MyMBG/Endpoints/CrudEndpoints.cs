@@ -94,12 +94,21 @@ public static class CrudEndpoints
             }
         });
 
-        group.MapPost("/{entity}", async (string entity, JsonElement body, GenericCrudRepository repo, HttpRequest request, TokenValidator tokenValidator) =>
+        group.MapPost("/{entity}", async (string entity, JsonElement body, GenericCrudRepository repo, NpgsqlDataSource dataSource, HttpRequest request, TokenValidator tokenValidator) =>
         {
             var userId = await tokenValidator.ValidateTokenAsync(request);
             if (userId == null)
             {
                 return Results.Unauthorized();
+            }
+
+            if (string.Equals(entity, "distribusi", StringComparison.OrdinalIgnoreCase))
+            {
+                var porsiError = await DistribusiEndpoints.ValidatePorsiAgainstProductionAsync(dataSource, body);
+                if (porsiError != null)
+                {
+                    return Results.BadRequest(new { message = porsiError });
+                }
             }
 
             try
@@ -123,12 +132,21 @@ public static class CrudEndpoints
             }
         });
 
-        group.MapPut("/{entity}/{id}", async (string entity, string id, JsonElement body, GenericCrudRepository repo, HttpRequest request, TokenValidator tokenValidator) =>
+        group.MapPut("/{entity}/{id}", async (string entity, string id, JsonElement body, GenericCrudRepository repo, NpgsqlDataSource dataSource, HttpRequest request, TokenValidator tokenValidator) =>
         {
             var userId = await tokenValidator.ValidateTokenAsync(request);
             if (userId == null)
             {
                 return Results.Unauthorized();
+            }
+
+            if (string.Equals(entity, "distribusi", StringComparison.OrdinalIgnoreCase))
+            {
+                var porsiError = await DistribusiEndpoints.ValidatePorsiAgainstProductionAsync(dataSource, body, id);
+                if (porsiError != null)
+                {
+                    return Results.BadRequest(new { message = porsiError });
+                }
             }
 
             try

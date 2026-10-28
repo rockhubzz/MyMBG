@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { crudApi } from '@/lib/api/crud';
 import { createProduksiWithBahan } from '@/lib/api/produksi';
+import { apiClient } from '@/lib/api/client';
 import { ColumnDefinition, EntityDefinition } from '@/types/crud';
 import { Layout } from '@/components/Layout';
 import { useAuthStore } from '@/store/auth-store';
@@ -15,6 +16,24 @@ interface Props {
 }
 
 type FormState = Record<string, string>;
+
+interface ProduksiOption {
+  id: string;
+  label: string;
+  /** Portions produced minus portions already shipped for this session. */
+  remaining?: number;
+}
+
+interface ProduksiAvailability {
+  id: string;
+  kode_produksi?: string | null;
+  nama_menu?: string | null;
+  tanggal_produksi?: string | null;
+  status?: string | null;
+  porsi_diproduksi: number;
+  porsi_terkirim: number;
+  sisa_porsi: number;
+}
 
 function humanizeLabel(fieldName: string): string {
   // Convert snake_case to Title Case
@@ -138,7 +157,7 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [resepOptions, setResepOptions] = useState<{ id: string; namaMenu: string }[]>([]);
-  const [produksiOptions, setProduksiOptions] = useState<{ id: string; label: string }[]>([]);
+  const [produksiOptions, setProduksiOptions] = useState<ProduksiOption[]>([]);
   const [kurangiStokSekarang, setKurangiStokSekarang] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -175,21 +194,16 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
           }
         } else if (entity === 'distribusi') {
           try {
-            const [produksiRes, resepRes] = await Promise.all([
-              crudApi.list('produksi', 1, 500, ''),
-              crudApi.list('resep', 1, 500, ''),
-            ]);
-            const resepMap = new Map<string, string>();
-            (resepRes.items as Record<string, unknown>[]).forEach((r) => {
-              resepMap.set(String(r.id), String(r.nama_menu ?? r.id));
-            });
-            const options = (produksiRes.items as Record<string, unknown>[]).map((p) => {
-              const resepId = String(p.resep_id ?? '');
-              const menu = resepMap.get(resepId) ?? 'Resep tidak diketahui';
-              const tanggal = p.tanggal_produksi ? String(p.tanggal_produksi) : '';
+            // Only sessions with shippable portions left (server computes
+            // produced minus already-shipped per session).
+            const available = await apiClient<ProduksiAvailability[]>('/distribusi/available-productions');
+            const options = available.map((p) => {
+              const tanggal = p.tanggal_produksi ? String(p.tanggal_produksi).slice(0, 10) : '';
+              const menu = p.nama_menu ?? 'Resep tidak diketahui';
               const status = p.status ? ` [${p.status}]` : '';
-              const label = tanggal ? `${menu} — ${tanggal}${status}` : `${menu}${status}`;
-              return { id: String(p.id), label };
+              const base = p.kode_produksi ? `[${p.kode_produksi}] ${menu}` : menu;
+              const label = `${tanggal ? `${base} — ${tanggal}${status}` : `${base}${status}`}`;
+              return { id: String(p.id), label, remaining: Number(p.sisa_porsi) };
             });
             setProduksiOptions(options);
           } catch {
@@ -249,6 +263,20 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
       setFieldErrors({});
 
       const payload: Record<string, unknown> = {};
+      // Distribusi: cannot ship more portions than the selected production
+      // session still has (produced minus already shipped).
+      if (entity === 'distribusi') {
+        const sesiId = String(form.sesi_produksi_id ?? '').trim();
+        const sel = produksiOptions.find((o) => o.id === sesiId);
+        const shippedNow = Number(payload.jumlah_porsi ?? 0);
+        if (sel?.remaining != null && shippedNow > sel.remaining) {
+          fieldErrs['jumlah_porsi'] = `Maksimal ${Number.isInteger(sel.remaining) ? sel.remaining : sel.remaining.toLocaleString('id-ID')} porsi`;
+          setFieldErrors(fieldErrs);
+          throw new Error(
+            `Jumlah porsi distribusi melebihi sisa produksi (${Number.isInteger(sel.remaining) ? sel.remaining : sel.remaining.toLocaleString('id-ID')} porsi tersisa).`
+          );
+        }
+      }
       editableColumns.forEach((col) => {
         const v = (form[col.name] ?? '').trim();
         
@@ -434,18 +462,29 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
                     ))}
                   </select>
                 ) : entity === 'distribusi' && col.name === 'sesi_produksi_id' ? (
-                  <select
-                    value={form[col.name] ?? ''}
-                    onChange={(e) => updateField(col.name, e.target.value)}
-                    className={`w-full px-4 py-2 rounded-lg border ${fieldErrors[col.name] ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'} bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500`}
-                  >
-                    <option value="">Pilih sesi produksi</option>
-                    {produksiOptions.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div>
+                    <select
+                      value={form[col.name] ?? ''}
+                      onChange={(e) => updateField(col.name, e.target.value)}
+                      className={`w-full px-4 py-2 rounded-lg border ${fieldErrors[col.name] ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'} bg-white text-black text-sm focus:outline-none focus:ring-2 focus:ring-green-500`}
+                    >
+                      <option value="">Pilih sesi produksi</option>
+                      {produksiOptions.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                          {p.remaining != null ? ` · Sisa ${Number.isInteger(p.remaining) ? p.remaining : p.remaining.toLocaleString('id-ID')} porsi` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {(() => {
+                      const sel = produksiOptions.find((o) => o.id === (form[col.name] ?? ''));
+                      return sel?.remaining != null ? (
+                        <p className="text-xs text-blue-600 mt-1 font-medium">
+                          Sisa porsi produksi ini: {Number.isInteger(sel.remaining) ? sel.remaining : sel.remaining.toLocaleString('id-ID')}
+                        </p>
+                      ) : null;
+                    })()}
+                  </div>
                 ) : entity === 'bahan-baku' && col.name === 'kategori' ? (
                   <select
                     value={form[col.name] ?? ''}

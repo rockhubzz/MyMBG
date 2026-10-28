@@ -126,6 +126,7 @@ app.MapGet("/db/ping", async (NpgsqlDataSource dataSource) =>
 app.MapAuthEndpoints();
 app.MapCrudEndpoints();
 app.MapProduksiEndpoints();
+app.MapDistribusiEndpoints();
 
 using (var scope = app.Services.CreateScope())
 {
