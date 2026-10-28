@@ -20,8 +20,8 @@ interface DetailModalProps {
   formatValue?: (row: Record<string, unknown>, col: ColumnDefinition) => string;
   /** Hide the Edit button (e.g. read-only pages like keuangan). */
   hideEdit?: boolean;
-  /** Hide the link to the entity's full [id] detail page. */
-  hideDetailLink?: boolean;
+  /** Delete action for the footer button; when omitted no Delete button is shown. */
+  onDelete?: () => void;
 }
 
 /** Columns that add no value in a detail card. */
@@ -98,7 +98,7 @@ export function DetailModal({
   columnAliases = {},
   formatValue = defaultFormatValue,
   hideEdit = false,
-  hideDetailLink = false,
+  onDelete,
 }: DetailModalProps) {
   const [meta, setMeta] = useState<EntityDefinition | null>(metaCache.get(entity) ?? null);
   const [metaError, setMetaError] = useState<string | null>(null);
@@ -208,20 +208,28 @@ export function DetailModal({
 
         {/* Footer */}
         <div className="border-t border-gray-200 px-6 py-3 flex justify-end gap-2 shrink-0">
-          {!hideDetailLink && idValue && (
-            <Link
-              href={`/${entity}/${idValue}`}
-              onClick={onCloseRef.current}
-              className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-xs font-medium hover:bg-gray-50 transition"
+          <button
+            onClick={onCloseRef.current}
+            className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-xs font-medium hover:bg-gray-50 transition"
+          >
+            Tutup
+          </button>
+          {onDelete && (
+            <button
+              onClick={() => {
+                onDelete();
+                onCloseRef.current();
+              }}
+              className="px-4 py-2 rounded-lg border border-red-300 bg-red-50 text-red-700 text-xs font-medium hover:bg-red-100 transition"
             >
-              Halaman Lengkap
-            </Link>
+              🗑 Hapus
+            </button>
           )}
           {!hideEdit && idValue && (
             <Link
               href={`/${entity}/${idValue}`}
               onClick={onCloseRef.current}
-              className="px-4 py-2 rounded-lg border border-blue-300 bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 transition"
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition"
             >
               ✎ Edit
             </Link>

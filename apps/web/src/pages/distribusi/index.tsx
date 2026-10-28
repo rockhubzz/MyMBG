@@ -327,6 +327,9 @@ export default function DistribusiPage() {
         onClose={() => setDetailRow(null)}
         columnAliases={columnAliases}
         formatValue={formatCellValue}
+        onDelete={() => {
+          if (detailRow) void remove(detailRow);
+        }}
       />
     </Layout>
   );

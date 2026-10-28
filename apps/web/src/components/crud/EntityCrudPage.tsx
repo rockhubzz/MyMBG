@@ -343,6 +343,9 @@ export default function EntityCrudPage({ entity, title, displayColumns, columnAl
         onClose={() => setDetailRow(null)}
         columnAliases={columnAliases}
         formatValue={formatCellValue}
+        onDelete={() => {
+          if (detailRow) void remove(detailRow);
+        }}
       />
     </Layout>
   );

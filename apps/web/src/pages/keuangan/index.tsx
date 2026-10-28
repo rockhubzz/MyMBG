@@ -290,7 +290,6 @@ export default function KeuanganPage() {
           onClose={() => setDetailRow(null)}
           formatValue={(row, col) => getDisplayColumnValue(row as KeuanganDisplayItem, col.name)}
           hideEdit
-          hideDetailLink
         />
       </div>
     </Layout>
