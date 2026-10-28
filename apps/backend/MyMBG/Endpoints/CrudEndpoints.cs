@@ -8,6 +8,24 @@ namespace MyMBG.Endpoints;
 
 public static class CrudEndpoints
 {
+    /// <summary>True when the update body sets <c>status</c> to the given value (case-insensitive).</summary>
+    private static bool BodyStatusIs(JsonElement body, string expected)
+    {
+        if (body.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+        foreach (var prop in body.EnumerateObject())
+        {
+            if (string.Equals(prop.Name, "status", StringComparison.OrdinalIgnoreCase) &&
+                prop.Value.ValueKind == JsonValueKind.String)
+            {
+                return string.Equals(prop.Value.GetString(), expected, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        return false;
+    }
+
     /// <summary>
     /// Translate Postgres rejections (not-null, FK, duplicate, bad UUID ...)
     /// into a 400 with a readable message instead of an opaque 500.
@@ -146,6 +164,16 @@ public static class CrudEndpoints
                 if (porsiError != null)
                 {
                     return Results.BadRequest(new { message = porsiError });
+                }
+            }
+
+            if (string.Equals(entity, "produksi", StringComparison.OrdinalIgnoreCase) &&
+                BodyStatusIs(body, "Selesai"))
+            {
+                var finishError = await ProduksiEndpoints.ValidateFinishAsync(dataSource, id);
+                if (finishError != null)
+                {
+                    return Results.BadRequest(new { message = finishError });
                 }
             }
 

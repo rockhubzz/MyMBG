@@ -141,6 +141,13 @@ public static class ProduksiEndpoints
                     }
                 }
 
+                if (bahanRows.Count == 0)
+                {
+                    // A session on an ingredient-less recipe would record 0 cost.
+                    await tx.RollbackAsync();
+                    return Results.BadRequest(new { message = "Resep belum memiliki bahan. Tambahkan bahan baku pada resep terlebih dahulu agar biaya produksi tercatat." });
+                }
+
                 foreach (var row in bahanRows)
                 {
                     var qty = decimal.Round(row.jumlah * factor, 3, MidpointRounding.AwayFromZero);
@@ -165,6 +172,13 @@ public static class ProduksiEndpoints
 
                 if (mustFinalize)
                 {
+                    var finishError = await ValidateFinishCoreAsync(conn, tx, sesiId);
+                    if (finishError != null)
+                    {
+                        await tx.RollbackAsync();
+                        return Results.BadRequest(new { message = finishError });
+                    }
+
                     await using var cmdFin = new NpgsqlCommand(
                         """
                         UPDATE sesi_produksi
@@ -214,6 +228,64 @@ public static class ProduksiEndpoints
         "Selesai",
         "Dibatalkan"
     };
+
+    /// <summary>
+    /// A session can only be finished when at least one bahan-baku usage row
+    /// exists (otherwise the financial report would record a 0 production cost)
+    /// and when the stock on hand covers every planned deduction.
+    /// Returns an error message, or null when the session can be finished.
+    /// </summary>
+    internal static async Task<string?> ValidateFinishAsync(NpgsqlDataSource dataSource, string sesiProduksiId)
+    {
+        if (!Guid.TryParse(sesiProduksiId, out var sesiId))
+        {
+            return null;
+        }
+
+        await using var conn = await dataSource.OpenConnectionAsync();
+        return await ValidateFinishCoreAsync(conn, null, sesiId);
+    }
+
+    internal static async Task<string?> ValidateFinishCoreAsync(NpgsqlConnection conn, NpgsqlTransaction? tx, Guid sesiId)
+    {
+        await using var cmdCount = new NpgsqlCommand(
+            "SELECT COUNT(*) FROM penggunaan_bahan WHERE sesi_produksi_id = @sesi", conn, tx);
+        cmdCount.Parameters.AddWithValue("sesi", sesiId);
+        var count = Convert.ToInt32(await cmdCount.ExecuteScalarAsync());
+        if (count == 0)
+        {
+            return "Sesi produksi belum memiliki catatan pemakaian bahan, sehingga biaya produksi akan tercatat 0. Tambahkan bahan baku pada resep, lalu buat sesi produksi baru.";
+        }
+
+        var shortages = new List<string>();
+        await using (var cmdShort = new NpgsqlCommand(
+            """
+            SELECT bb.nama_bahan, pb.jumlah_digunakan, bb.stok_saat_ini, COALESCE(bb.satuan, 'unit')
+            FROM penggunaan_bahan pb
+            JOIN bahan_baku bb ON bb.id = pb.bahan_baku_id
+            WHERE pb.sesi_produksi_id = @sesi AND pb.jumlah_digunakan > bb.stok_saat_ini
+            ORDER BY bb.nama_bahan
+            """, conn, tx))
+        {
+            cmdShort.Parameters.AddWithValue("sesi", sesiId);
+            await using var reader = await cmdShort.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var nama = reader.GetString(0);
+                var butuh = reader.GetDecimal(1);
+                var ada = reader.GetDecimal(2);
+                var satuan = reader.GetString(3);
+                shortages.Add($"{nama} — dibutuhkan {butuh:0.###} {satuan}, stok tersisa {ada:0.###} {satuan}");
+            }
+        }
+
+        if (shortages.Count > 0)
+        {
+            return "Stok bahan tidak cukup untuk menyelesaikan produksi: " + string.Join("; ", shortages) + ". Tambah stok bahan terlebih dahulu.";
+        }
+
+        return null;
+    }
 
     public sealed record ProduksiCreateRequest(
         Guid ResepId,
