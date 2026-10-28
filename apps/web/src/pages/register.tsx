@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -144,7 +145,12 @@ export default function RegisterPage() {
   const strengthColor = ['', 'bg-red-400', 'bg-yellow-400', 'bg-blue-400', 'bg-green-500'][strengthCount];
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 px-4 py-10">
+    <>
+      <Head>
+        <title>Daftar · MyMBG</title>
+        <meta name="description" content="Buat akun Sistem Manajemen MBG" />
+      </Head>
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 px-4 py-10">
       <div className="w-full max-w-md">
 
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -314,5 +320,6 @@ export default function RegisterPage() {
         </p>
       </div>
     </main>
+    </>
   );
 }

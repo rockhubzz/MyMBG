@@ -49,7 +49,7 @@ export default function StokSiapKirimPage() {
 
   if (!user) {
     return (
-      <Layout>
+      <Layout title="Stok Siap Kirim">
         <div className="text-center text-red-500">Silahkan login terlebih dahulu</div>
       </Layout>
     );

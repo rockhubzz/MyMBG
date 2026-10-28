@@ -186,14 +186,14 @@ export default function KeuanganPage() {
 
   if (!user) {
     return (
-      <Layout>
+      <Layout title="Log Pengeluaran">
         <div className="text-center text-red-500">Silahkan login terlebih dahulu</div>
       </Layout>
     );
   }
 
   return (
-    <Layout>
+    <Layout title="Log Pengeluaran">
       <div className="max-w-7xl mx-auto p-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Log Pengeluaran (Keuangan)</h1>

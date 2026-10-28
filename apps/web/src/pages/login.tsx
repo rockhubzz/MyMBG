@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -49,7 +50,12 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 px-4">
+    <>
+      <Head>
+        <title>Masuk · MyMBG</title>
+        <meta name="description" content="Masuk ke Sistem Manajemen MBG" />
+      </Head>
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 px-4">
       <div className="w-full max-w-md">
 
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -261,5 +267,6 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+    </>
   );
 }
