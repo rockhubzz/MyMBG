@@ -245,7 +245,7 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity, isEditing, id]);
 
-  // Prefill from /stok-siap-kirim button: /distribusi/new?sesi=<id>&sisa=<porsi>
+  // Prefill from /stok-siap-kirim button: /distribusi/create?sesi=<id>&sisa=<porsi>
   useEffect(() => {
     if (!router.isReady || isEditing || entity !== 'distribusi') return;
     const sesi = router.query.sesi ? String(router.query.sesi) : '';

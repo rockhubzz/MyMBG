@@ -119,7 +119,7 @@ export default function StokSiapKirimPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
                         onClick={() =>
-                          router.push(`/distribusi/new?sesi=${p.id}&sisa=${Number(p.sisa_porsi)}`)
+                          router.push(`/distribusi/create?sesi=${p.id}&sisa=${Number(p.sisa_porsi)}`)
                         }
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition"
                       >
