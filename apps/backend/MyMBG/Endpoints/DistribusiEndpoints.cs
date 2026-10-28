@@ -40,7 +40,7 @@ public static class DistribusiEndpoints
                 FROM sesi_produksi sp
                 LEFT JOIN resep r ON r.id = sp.resep_id
                 LEFT JOIN distribusi d ON d.sesi_produksi_id = sp.id
-                WHERE sp.status <> 'Dibatalkan'
+                WHERE sp.status = 'Selesai'
                 GROUP BY sp.id, sp.kode_produksi, r.nama_menu, sp.tanggal_produksi, sp.status, sp.jumlah_porsi_diproduksi
                 HAVING sp.jumlah_porsi_diproduksi - COALESCE(SUM(d.jumlah_porsi), 0) > 0
                 ORDER BY sp.tanggal_produksi DESC NULLS LAST, sp.kode_produksi

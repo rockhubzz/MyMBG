@@ -7,7 +7,7 @@ export interface ProduksiCreatePayload {
   catatan?: string;
   status?: string;
   createdBy: string;
-  kurangiStokSekarang: boolean;
+  kurangiStokSekarang?: boolean;
 }
 
 export async function createProduksiWithBahan(payload: ProduksiCreatePayload) {

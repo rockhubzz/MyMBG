@@ -20,6 +20,7 @@ export function Sidebar({ user }: SidebarProps) {
   const navItems = [
     { label: 'Dashboard', href: '/dashboard', icon: <span className="text-3xl text-green-500"><IoStatsChart /></span> },
     { label: 'Monitor', href: '/monitor', icon: <span className="text-3xl text-green-500"><MdOutlineMonitorHeart /></span> },
+    { label: 'Stok Siap Kirim', href: '/stok-siap-kirim', icon: <span className="text-3xl text-green-500"><FaBoxesPacking /></span> },
     { label: 'Users', href: '/users', icon: <span className="text-3xl text-green-500"><FaUserCircle /></span> },
     { label: 'Bahan Baku', href: '/bahan-baku', icon: <span className="text-3xl text-green-500"><FaBoxesPacking /></span> },
     { label: 'Resep', href: '/resep', icon: <span className="text-3xl text-green-500"><GiKnifeFork /></span> },
@@ -29,9 +30,9 @@ export function Sidebar({ user }: SidebarProps) {
   ];
 
   const ROLE_ROUTES: Record<string, string[]> = {
-    Admin: ['/dashboard', '/monitor', '/users', '/bahan-baku', '/resep', '/produksi', '/distribusi', '/keuangan'],
-    KepalaDapur: ['/dashboard', '/monitor', '/bahan-baku', '/resep', '/produksi', '/distribusi', '/keuangan'],
-    Staff: ['/dashboard', '/monitor', '/bahan-baku', '/produksi', '/distribusi', '/keuangan'],
+    Admin: ['/dashboard', '/monitor', '/stok-siap-kirim', '/users', '/bahan-baku', '/resep', '/produksi', '/distribusi', '/keuangan'],
+    KepalaDapur: ['/dashboard', '/monitor', '/stok-siap-kirim', '/bahan-baku', '/resep', '/produksi', '/distribusi', '/keuangan'],
+    Staff: ['/dashboard', '/monitor', '/stok-siap-kirim', '/bahan-baku', '/produksi', '/distribusi', '/keuangan'],
   };
 
   const allowedRoutes = ROLE_ROUTES[user.role] ?? ['/dashboard'];

@@ -76,6 +76,28 @@ export default function ResepFormPage({ isEditing = false, id }: Props) {
     [meta]
   );
 
+  const findBahan = (bahanId: string): Record<string, unknown> | null =>
+    bahanBakuList.find((b) => String(b.id) === bahanId) ?? null;
+
+  // How many portions this ingredient can support given current stock:
+  // stok / (jumlah per resep-batch) * jumlah_porsi (the recipe's base portions).
+  const rowCapacity = (idx: number): number | null => {
+    const entry = bahanBakuEntries[idx];
+    if (!entry) return null;
+    const base = parseFloat(form.jumlah_porsi || '0') || 0;
+    const jumlah = parseFloat(entry.jumlah || '0');
+    const bahan = findBahan(entry.bahan_baku_id);
+    if (!bahan || jumlah <= 0 || base <= 0) return null;
+    const stok = Number(bahan.stok_saat_ini ?? 0);
+    return Math.floor((stok / jumlah) * base);
+  };
+
+  // Overall capacity = the limiting (minimum) ingredient.
+  const overallCapacity = bahanBakuEntries
+    .map((_, idx) => rowCapacity(idx))
+    .filter((c): c is number => c != null)
+    .reduce<number | null>((min, c) => (min == null || c < min ? c : min), null);
+
   // Load metadata, resep data, and bahan baku list
   useEffect(() => {
     const load = async () => {
@@ -324,6 +346,30 @@ export default function ResepFormPage({ isEditing = false, id }: Props) {
               </button>
             </div>
 
+            {overallCapacity != null && (
+              <div
+                className={`mb-3 rounded-lg border px-4 py-3 text-sm ${
+                  overallCapacity <= 0
+                    ? 'border-red-200 bg-red-50 text-red-800'
+                    : 'border-blue-200 bg-blue-50 text-blue-900'
+                }`}
+              >
+                {overallCapacity <= 0 ? (
+                  <>
+                    <span className="font-semibold">Stok tidak cukup.</span>{' '}
+                    Dengan stok saat ini, bahan-bahan di atas belum bisa memproduksi porsi apa pun. Tambah stok bahan baku terlebih dahulu.
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold">Estimasi kapasitas:</span> dengan stok saat ini, bahan-bahan
+                    di atas cukup untuk memproduksi ± <b>{overallCapacity.toLocaleString('id-ID')} porsi</b>
+                    {parseFloat(form.jumlah_porsi || '0') > 0 &&
+                      ` (komposisi dihitung untuk ${form.jumlah_porsi} porsi)`}.
+                  </>
+                )}
+              </div>
+            )}
+
             {bahanBakuEntries.length === 0 ? (
               <p className="text-gray-500 text-sm py-4">Belum ada bahan baku yang ditambahkan. Klik tombol di atas untuk menambahkan.</p>
             ) : (
@@ -333,6 +379,7 @@ export default function ResepFormPage({ isEditing = false, id }: Props) {
                     <tr>
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">Bahan Baku</th>
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">Jumlah</th>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-700">Cukup Untuk</th>
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">Catatan</th>
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">Aksi</th>
                     </tr>
@@ -355,13 +402,21 @@ export default function ResepFormPage({ isEditing = false, id }: Props) {
                           </select>
                         </td>
                         <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            value={entry.jumlah}
-                            onChange={(e) => handleBahanBakuChange(idx, 'jumlah', e.target.value)}
-                            placeholder="Jumlah"
-                            className={`w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-black text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500`}
-                          />
+                          <div className="flex items-stretch">
+                            <input
+                              type="text"
+                              value={entry.jumlah}
+                              onChange={(e) => handleBahanBakuChange(idx, 'jumlah', e.target.value)}
+                              placeholder="Jumlah"
+                              className="w-full min-w-0 px-3 py-2 rounded-l-lg border border-gray-300 bg-white text-black text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                            />
+                            <span className="px-3 flex items-center justify-center rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 text-gray-600 text-sm min-w-[52px]">
+                              {findBahan(entry.bahan_baku_id) ? String(findBahan(entry.bahan_baku_id)!.satuan ?? 'unit') : '—'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className={`px-4 py-3 text-sm whitespace-nowrap ${rowCapacity(idx) != null && rowCapacity(idx)! <= 0 ? 'text-red-600 font-medium' : 'text-gray-700'}`}>
+                          {rowCapacity(idx) == null ? '—' : `${rowCapacity(idx)!.toLocaleString('id-ID')} porsi`}
                         </td>
                         <td className="px-4 py-3">
                           <input

@@ -167,7 +167,6 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
   const [success, setSuccess] = useState<string | null>(null);
   const [resepOptions, setResepOptions] = useState<{ id: string; namaMenu: string }[]>([]);
   const [produksiOptions, setProduksiOptions] = useState<ProduksiOption[]>([]);
-  const [kurangiStokSekarang, setKurangiStokSekarang] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const updateField = (name: string, value: string) => {
@@ -245,6 +244,20 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity, isEditing, id]);
+
+  // Prefill from /stok-siap-kirim button: /distribusi/new?sesi=<id>&sisa=<porsi>
+  useEffect(() => {
+    if (!router.isReady || isEditing || entity !== 'distribusi') return;
+    const sesi = router.query.sesi ? String(router.query.sesi) : '';
+    const sisa = router.query.sisa ? String(router.query.sisa) : '';
+    if (!sesi) return;
+    setForm((s) => ({
+      ...s,
+      sesi_produksi_id: sesi,
+      jumlah_porsi: s.jumlah_porsi?.trim() || sisa,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, entity, isEditing]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -351,7 +364,6 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
           catatan: (form.catatan ?? '').trim() || undefined,
           status: (form.status ?? '').trim() || 'Direncanakan',
           createdBy: user.id,
-          kurangiStokSekarang,
         });
         setSuccess(res.message ?? 'Data berhasil ditambahkan');
       } else if (isEditing && id) {
@@ -546,24 +558,16 @@ export default function EntityFormPage({ entity, title, isEditing = false, id }:
           </div>
 
           {entity === 'produksi' && !isEditing && (
-            <div className="mb-8 rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-3">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={kurangiStokSekarang}
-                  onChange={(e) => setKurangiStokSekarang(e.target.checked)}
-                  className="mt-1 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                />
-                <span className="text-sm text-gray-800">
-                  <span className="font-semibold">Selesai dan kurangi stok bahan sekarang</span>
-                  <span className="block text-gray-600 mt-1">
-                    Sistem mencatat pemakaian bahan dari komposisi resep (disesuaikan dengan porsi yang Anda
-                    masukkan), lalu menandai sesi sebagai Selesai sehingga stok bahan baku berkurang di database.
-                    Matikan opsi ini jika Anda hanya ingin merencanakan tanpa mengurangi stok; Anda dapat
-                    mengubah status menjadi Selesai nanti dari halaman edit (setelah baris pemakaian bahan ada).
-                  </span>
-                </span>
-              </label>
+            <div className="mb-8 rounded-lg border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-gray-800">
+              <p className="font-semibold text-blue-900">Pemakaian bahan dihitung otomatis</p>
+              <p className="text-gray-600 mt-1">
+                Sistem mencatat pemakaian bahan dari komposisi resep, disesuaikan dengan porsi yang diproduksi
+                (contoh: resep memakai 20 telur untuk 20 porsi → produksi 10 porsi memakai 10 telur).
+              </p>
+              <p className="text-gray-600 mt-1">
+                Stok bahan baru dikurangi saat sesi diselesaikan — ubah status menjadi <b>Selesai</b> pada halaman
+                edit sesi produksi.
+              </p>
             </div>
           )}
 
