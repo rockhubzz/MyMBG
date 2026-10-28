@@ -26,8 +26,8 @@ export default function KeuanganPage() {
   const entity = 'keuangan';
   const [detailRow, setDetailRow] = useState<KeuanganDisplayItem | null>(null);
 
-  // Foreign key references cache
-  const [fkCache, setFkCache] = useState<Record<string, Record<string, string>>>({});
+  // Foreign key references cache (raw records, rendered via getDisplayValue)
+  const [fkCache, setFkCache] = useState<Record<string, Record<string, any>>>({});
 
   useEffect(() => {
     loadData();
@@ -59,7 +59,7 @@ export default function KeuanganPage() {
   }
 
   async function loadForeignKeyReferences(items: KeuanganDisplayItem[]) {
-    const newCache: Record<string, Record<string, string>> = { ...fkCache };
+    const newCache: Record<string, Record<string, any>> = { ...fkCache };
 
     // Collect all unique FK IDs to fetch
     const idsToFetch: Record<string, Set<string>> = {};
@@ -79,21 +79,35 @@ export default function KeuanganPage() {
       }
     }
 
-    // Fetch data for each entity type
-    for (const [entityType, ids] of Object.entries(idsToFetch)) {
+    const fetchRecords = async (entityType: string, ids: Set<string>): Promise<Record<string, Set<string>>> => {
+      // Records discovered while fetching, e.g. resep behind a produksi session
+      const discovered: Record<string, Set<string>> = {};
       if (!newCache[entityType]) {
         newCache[entityType] = {};
       }
 
       for (const id of ids) {
-        if (!newCache[entityType][id]) {
-          try {
-            const record = await crudApi.getById(entityType, id);
-            const displayValue = getDisplayValue(record, entityType);
-            newCache[entityType][id] = displayValue;
-          } catch {
-            newCache[entityType][id] = '—';
+        if (newCache[entityType][id]) continue;
+        try {
+          const record = await crudApi.getById(entityType, id);
+          newCache[entityType][id] = record;
+          if (record?.resep_id) {
+            (discovered['resep'] ??= new Set()).add(String(record.resep_id));
           }
+        } catch {
+          newCache[entityType][id] = null;
+        }
+      }
+      return discovered;
+    };
+
+    // Fetch records for each entity type; produksi sessions reference a resep,
+    // whose readable nama_menu must be loaded too.
+    for (const [entityType, ids] of Object.entries(idsToFetch)) {
+      const discovered = await fetchRecords(entityType, ids);
+      for (const [nestedType, nestedIds] of Object.entries(discovered)) {
+        if (nestedIds.size > 0) {
+          await fetchRecords(nestedType, nestedIds);
         }
       }
     }
@@ -101,13 +115,16 @@ export default function KeuanganPage() {
     setFkCache(newCache);
   }
 
-  function getDisplayValue(record: Record<string, any>, entityType: string): string {
+  function getDisplayValue(record: Record<string, any> | null, entityType: string): string {
+    if (!record) return '—';
     if (entityType === 'produksi') {
       const kode = record.kode_produksi ? `[${record.kode_produksi}] ` : '';
-      return `${kode}${record.resep_id ? '(Resep: ' + record.resep_id + ')' : ''} - ${record.tanggal_produksi || ''}`.trim();
+      const resepRecord = record.resep_id ? fkCache['resep']?.[String(record.resep_id)] : null;
+      const resepLabel = resepRecord?.nama_menu ?? (record.resep_id ? `Resep ${String(record.resep_id).slice(0, 8)}…` : 'Resep');
+      return `${kode}${resepLabel} - ${record.tanggal_produksi ?? ''}`.trim();
     } else if (entityType === 'distribusi') {
       const kode = record.kode_distribusi ? `[${record.kode_distribusi}] ` : '';
-      return `${kode}${record.nama_penerima || ''} (${record.lokasi || ''})`;
+      return `${kode}${record.nama_penerima || ''} (${record.lokasi || ''})`.trim();
     } else if (entityType === 'users') {
       return record.nama || record.email || '—';
     } else if (entityType === 'resep') {
@@ -143,11 +160,14 @@ export default function KeuanganPage() {
     const value = item[columnName];
 
     if (columnName === 'sesi_produksi_id') {
-      return value && fkCache['produksi']?.[value] ? fkCache['produksi'][value] : '—';
+      const record = value && fkCache['produksi']?.[value];
+      return record ? getDisplayValue(record, 'produksi') : '—';
     } else if (columnName === 'distribusi_id') {
-      return value && fkCache['distribusi']?.[value] ? fkCache['distribusi'][value] : '—';
+      const record = value && fkCache['distribusi']?.[value];
+      return record ? getDisplayValue(record, 'distribusi') : '—';
     } else if (columnName === 'created_by') {
-      return value && fkCache['users']?.[value] ? fkCache['users'][value] : '—';
+      const record = value && fkCache['users']?.[value];
+      return record ? getDisplayValue(record, 'users') : '—';
     }
 
     return formatValue(value, columnName);
